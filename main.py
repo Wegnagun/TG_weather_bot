@@ -1,3 +1,4 @@
+"""Бот, чтобы поинтересовать, а шо там по погоде в нужном городе."""
 import datetime
 import logging
 import os
@@ -28,6 +29,7 @@ def check_tokens() -> bool:
 
 @dp.message_handler(commands=['start'])
 async def start_command(message: types.Message):
+    """Функция реакции на команду /start."""
     me = await bot.get_me()
     await message.reply(f'\U0001F916 Привет, {message.from_user.full_name}, '
                         f'меня зовут {me.full_name}, '
@@ -36,32 +38,33 @@ async def start_command(message: types.Message):
 
 @dp.message_handler()
 async def get_weather(message: types.Message):
-    try:
-        response = ask_api(message.text, OPEN_WEATHER_TOKEN)
-        city = response['name']
-        temperature = response['main']['temp']
-        humidity = response['main']['humidity']
-        pressure = response['main']['pressure']
-        wind_speeed = response['wind']["speed"]
-        weather_description = response['weather'][0]['main']
-        if weather_description in EMODJI_DICTIONARY:
-            emodji = f'За окном: {EMODJI_DICTIONARY[weather_description]}'
-        else:
-            emodji = 'Посмотри в окно, черт знает, что там происходит...'
-        await message.reply(
-            f"#####################\n"
-            f"По состоянию на "
-            f"{datetime.datetime.now().strftime('[%Y-%m-%d] [%H:%M]')}\n"
-            f'Погода в городе {city}:\nТемпература: {temperature} С°\n'
-            f'{emodji}\n'
-            f'Влажность: {humidity}\nДавление: {pressure} '
-            f'мм.рт.ст.\nСкорость ветра: {wind_speeed} м/с\n'
-            f'### Хорошего дня! ###\n'
-            f"#####################"
-        )
-    except Exception as error:
-        logger.error(error)
-        await message.reply('\U00002620 Проверьте город! \U00002620')
+    """Основная логика работы бота."""
+    response = ask_api(message.text, OPEN_WEATHER_TOKEN)
+    if 'error' in response:
+        logger.error(f'Ошибка! {response["error"]}')
+        await message.reply(response['message'])
+    logger.info(f'статус ответа api {response["code"]}')
+    city = response['message']['name']
+    temperature = response['message']['main']['temp']
+    humidity = response['message']['main']['humidity']
+    pressure = response['message']['main']['pressure']
+    wind_speeed = response['message']['wind']["speed"]
+    weather_description = response['message']['weather'][0]['main']
+    if weather_description in EMODJI_DICTIONARY:
+        emodji = f'За окном: {EMODJI_DICTIONARY[weather_description]}'
+    else:
+        emodji = 'Посмотри в окно, черт знает, что там происходит...'
+    await message.reply(
+        f"#####################\n"
+        f"По состоянию на "
+        f"{datetime.datetime.now().strftime('[%Y-%m-%d] [%H:%M]')}\n"
+        f'Погода в городе {city}:\nТемпература: {temperature} С°\n'
+        f'{emodji}\n'
+        f'Влажность: {humidity}\nДавление: {pressure} '
+        f'мм.рт.ст.\nСкорость ветра: {wind_speeed} м/с\n'
+        f'### Хорошего дня! ###\n'
+        f"#####################"
+    )
 
 
 if __name__ == '__main__':
@@ -81,4 +84,3 @@ if __name__ == '__main__':
         logger.critical('Ошибка, проверьте токены в config.py')
         sys.exit('Ошибка, проверьте токены в config.py')
     executor.start_polling(dp, skip_updates=True)
-
